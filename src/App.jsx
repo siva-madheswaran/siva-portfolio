@@ -86,7 +86,7 @@ const PERFORMANCE_DATA = [
 ];
 
 /* Scale of data engineered across projects: log-friendly spread, so shown
-   on a log scale to keep the 42-node-type entry visible next to 3.6M records. */
+   on a log scale to keep the smallest entries legible next to 3.6M records. */
 const SCALE_DATA = [
   { name: "Streaming\nRecords (Kafka\u2192Neo4j)", value: 3600000, display: "3.6M" },
   { name: "Wafer Maps\n(LSWMD)", value: 811457, display: "811K" },
@@ -283,23 +283,28 @@ const PROJECTS = [
   },
   {
     id: "streaming",
-    title: "Real-Time Data Pipeline (Kafka \u2192 Neo4j)",
+    title: "Real-Time Data Streaming Pipeline (Kafka \u2192 Neo4j on Kubernetes)",
     tag: "Data Engineering",
-    period: "Sep 2025 \u2013 Dec 2025 \u00B7 CSE 511",
+    period: "CSE 511, Project Phase 2",
     team: "Individual build",
-    role: "Architected and deployed the full pipeline solo.",
+    role: "Architected, deployed, and debugged the full pipeline solo.",
     problem:
-      "Process high-volume streaming event data with sub-second latency and model spatial relationships in a way that supports live graph traversal and anomaly detection.",
+      "Extend a static, Docker-based Neo4j setup into a fully containerized, real-time streaming pipeline on Kubernetes, taking NYC taxi trip data from a live Kafka topic all the way into a queryable graph, while working through real infrastructure constraints like ARM64 compatibility, JVM memory limits, and Kubernetes namespace routing.",
     approach: [
-      "Architected a Kafka-based streaming pipeline processing 3.6M+ NYC taxi records",
-      "Built a Kafka Connect pipeline to ingest JSON event streams into Neo4j, modeling 42+ node types for spatial relationship queries",
-      "Containerized all pipeline components on Kubernetes for horizontal scalability and zero-downtime rolling updates",
-      "Troubleshot ARM64 compatibility issues running the pipeline on an M2 MacBook",
+      "Deployed a four-service pipeline on a local Kubernetes cluster (Minikube): Zookeeper and Kafka via raw manifests, Neo4j via the official Helm chart with the Graph Data Science plugin enabled, and a Kafka Connect sink connector, all defined as reproducible Kubernetes manifests and Helm values files",
+      "Built a Python producer that filtered the NYC Yellow Taxi dataset down to Bronx-only trips and streamed them as JSON into a Kafka topic at a controlled rate",
+      "Configured Kafka Connect with a custom Cypher MERGE/CREATE query to auto-build the graph: pickup and dropoff locations as Location nodes, each trip as a directional TRIP relationship carrying distance and fare as properties",
+      "Debugged a chain of real infrastructure issues in sequence: a read-only-filesystem permission error on the default entrypoint (fixed by switching to a custom init script), a connector OOM kill (fixed by raising container memory limits), pods stuck in Pending from insufficient CPU allocation, a hardcoded namespace mismatch between resources, and an ARM64 image tag issue that pulled the wrong architecture on Apple Silicon",
     ],
-    results: ["Sub-second end-to-end latency at 3.6M+ record scale"],
+    results: [
+      "100/100 on the course's automated end-to-end validation suite, covering infrastructure, Kafka/Neo4j connectivity, data integrity, and graph validation",
+      "Correctly modeled 42 Location nodes and their TRIP relationships in Neo4j from the filtered Bronx taxi data",
+      "Processed the full 3,627,882-row NYC Yellow Taxi dataset through the pipeline end to end",
+    ],
     reflection:
-      "The ARM64 compatibility debugging was an unglamorous but real lesson in how much infrastructure work sits underneath a clean architecture diagram.",
-    stack: ["Kafka", "Kubernetes", "Neo4j", "Docker"],
+      "The most valuable part wasn't the happy path, it was debugging five distinct infrastructure failures in a row (a bad entrypoint, an OOM kill, a namespace mismatch, an ARM64 image issue) that never show up in a tutorial. I also kept the report's limitations section honest rather than glossing over them: throughput is intentionally throttled, there's no dead-letter queue, and replaying the producer creates duplicate relationships since TRIP is created, not merged.",
+    stack: ["Apache Kafka", "Kafka Connect", "Neo4j", "Kubernetes", "Helm", "Python"],
+    link: "https://github.com/siva-madheswaran/kafka-neo4j-k8s-pipeline",
   },
   {
     id: "cognitivetwin",
