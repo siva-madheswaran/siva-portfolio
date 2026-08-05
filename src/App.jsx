@@ -2565,8 +2565,8 @@ function ChatBot() {
     try {
       /* -----------------------------------------------------------------
          This calls the Netlify serverless function at
-         netlify/functions/chat.js, which holds the Anthropic API key
-         server-side. Set ANTHROPIC_API_KEY as an environment variable in
+         netlify/functions/chat.js, which holds the OpenAI API key
+         server-side. Set OPENAI_API_KEY as an environment variable in
          your Netlify site settings, never in this frontend file.
          ----------------------------------------------------------------- */
       const response = await fetch("/.netlify/functions/chat", {
@@ -2581,11 +2581,10 @@ function ChatBot() {
         }),
       });
       const data = await response.json();
-      const reply = (data.content || [])
-        .filter((b) => b.type === "text")
-        .map((b) => b.text)
-        .join("\n")
-        .trim();
+      const reply = (data.choices && data.choices[0] && data.choices[0].message
+        ? data.choices[0].message.content
+        : ""
+      ).trim();
 
       setMessages((prev) => [
         ...prev,

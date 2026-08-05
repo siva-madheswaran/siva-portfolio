@@ -1,6 +1,6 @@
 // Netlify serverless function: POST /.netlify/functions/chat
-// Holds the Anthropic API key server-side and forwards chat requests from
-// the "Ask about Siva" widget. Set ANTHROPIC_API_KEY in Netlify's site
+// Holds the OpenAI API key server-side and forwards chat requests from
+// the "Ask about Siva" widget. Set OPENAI_API_KEY in Netlify's site
 // environment variables (Site settings -> Environment variables), never
 // commit it to the repo.
 
@@ -12,10 +12,10 @@ export default async (req) => {
     });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return new Response(
-      JSON.stringify({ error: "Server is missing ANTHROPIC_API_KEY" }),
+      JSON.stringify({ error: "Server is missing OPENAI_API_KEY" }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
@@ -30,26 +30,29 @@ export default async (req) => {
       });
     }
 
-    const anthropicResponse = await fetch("https://api.anthropic.com/v1/messages", {
+    // OpenAI's chat completions API expects the system prompt as the first
+    // message in the array, with role "system", rather than as a separate
+    // top-level field like Anthropic's API uses.
+    const openaiMessages = [{ role: "system", content: system }, ...messages];
+
+    const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",
+        model: "gpt-4o-mini",
         max_tokens: 1000,
-        system,
-        messages,
+        messages: openaiMessages,
       }),
     });
 
-    const data = await anthropicResponse.json();
+    const data = await openaiResponse.json();
 
-    if (!anthropicResponse.ok) {
+    if (!openaiResponse.ok) {
       return new Response(JSON.stringify({ error: data }), {
-        status: anthropicResponse.status,
+        status: openaiResponse.status,
         headers: { "Content-Type": "application/json" },
       });
     }
